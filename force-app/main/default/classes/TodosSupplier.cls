@@ -12,7 +12,6 @@ global with sharing class TodosSupplier {
         List<Object> todosJson = (List<Object>) JSON.deserializeUntyped(request.requestBody.toString());
         for (Object todo : todosJson) {
             Map<String, Object> receivedTodoMap = (Map<String, Object>) todo;
-            System.debug(receivedTodoMap);
             todosToInsert.add(mapTodo(receivedTodoMap));
         }
         insert todosToInsert;
@@ -27,7 +26,7 @@ global with sharing class TodosSupplier {
 
     private static ToDo__c mapTodo(Map<String, Object> receivedTodoMap) {
         String recordTypeName = (String) receivedTodoMap.get('recordTypeName');
-        RecordType recordType = [SELECT Id FROM RecordType WHERE Name =: recordTypeName];
+        RecordType recordType = [SELECT Id FROM RecordType WHERE Name = :recordTypeName];
         return new ToDo__c(
                 ExternalId__c = (String) receivedTodoMap.get('id'),
                 Name = (String) receivedTodoMap.get('name'),
@@ -61,18 +60,26 @@ global with sharing class TodosSupplier {
     }
 
     @HttpPut
-    global static Id upsertTodo() {
+    global static void updateTodo() {
         RestRequest request = RestContext.request;
-        String todoId = request.requestURI.substring(
-                request.requestURI.lastIndexOf('/') + 1);
-        ToDo__c thisTodo = [SELECT Id FROM ToDo__c WHERE Id = :todoId];
-// Deserialize the JSON string into name-value pairs
-        Map<String, Object> params = (Map<String, Object>) JSON.deserializeUntyped(request.requestBody.toString());
-// Iterate through each parameter field and value
-        for (String fieldName : params.keySet()) {
-            thisTodo.put(fieldName, params.get(fieldName));
+        List<ToDo__c> todosFromRequest = new List<ToDo__c>();
+        List<Object> todosJson = (List<Object>) JSON.deserializeUntyped(request.requestBody.toString());
+        for (Object todo : todosJson) {
+            Map<String, Object> receivedTodoMap = (Map<String, Object>) todo;
+            todosFromRequest.add(mapTodo(receivedTodoMap));
         }
-        upsert thisTodo;
-        return thisTodo.Id;
+        List<String> externalIds = new List<String>();
+        for (ToDo__c todo : todosFromRequest) {
+            externalIds.add(todo.ExternalId__c);
+        }
+        List<ToDo__c> todosFromDB = [SELECT Id, ExternalId__c FROM ToDo__c WHERE ExternalId__c IN :externalIds];
+        for (ToDo__c todoFromRequest : todosFromRequest) {
+            for (ToDo__c todoFromDB : todosFromDB) {
+                if (todoFromRequest.ExternalId__c == todoFromDB.ExternalId__c) {
+                    todoFromRequest.Id = todoFromDB.Id;
+                }
+            }
+        }
+        update todosFromRequest;
     }
 }
