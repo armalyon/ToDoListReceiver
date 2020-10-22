@@ -14,7 +14,7 @@ global with sharing class SubTodosSupplier {
         List<Object> subTodosJson = (List<Object>) JSON.deserializeUntyped(request.requestBody.toString());
         for (Object todo : subTodosJson) {
             Map<String, Object> receivedTodoMap = (Map<String, Object>) todo;
-            subTodosToInsert.add(mapSubTodo(receivedTodoMap, externalParentTodoIds));
+            subTodosToInsert.add(mapSubTodoAndGetParentIds(receivedTodoMap, externalParentTodoIds));
         }
 
         List<ToDo__c> parentTodos = [SELECT Id, ExternalId__c FROM ToDo__c WHERE ExternalId__c IN :externalParentTodoIds];
@@ -51,36 +51,37 @@ global with sharing class SubTodosSupplier {
             res.statusCode = 500;
         }
         RestContext.response = res;
-        System.debug(res);
     }
 
-//    @HttpPut
-//    global static void updateSubTodo() {
-//        RestRequest request = RestContext.request;
-//        List<Sub_ToDo__c> todosFromRequest = new List<Sub_ToDo__c>();
-//        List<Object> todosJson = (List<Object>) JSON.deserializeUntyped(request.requestBody.toString());
-//        for (Object todo : todosJson) {
-//            Map<String, Object> receivedTodoMap = (Map<String, Object>) todo;
-//            todosFromRequest.add(mapSubTodo(receivedTodoMap));
-//        }
-//
-//        List<String> externalIds = new List<String>();
-//        for (Sub_ToDo__c todo : todosFromRequest) {
-//            externalIds.add(todo.ExternalId__c);
-//        }
-//
-//        List<Sub_ToDo__c> todosFromDB = [SELECT Id, ExternalId__c FROM Sub_ToDo__c WHERE ExternalId__c IN :externalIds];
-//        for (Sub_ToDo__c todoFromRequest : todosFromRequest) {
-//            for (Sub_ToDo__c todoFromDB : todosFromDB) {
-//                if (todoFromRequest.ExternalId__c == todoFromDB.ExternalId__c) {
-//                    todoFromRequest.Id = todoFromDB.Id;
-//                }
-//            }
-//        }
-//        update todosFromRequest;
-//    }
+    @HttpPut
+    global static void updateSubTodo() {
+        RestRequest request = RestContext.request;
+        List<Sub_ToDo__c> subTodosFromRequest = new List<Sub_ToDo__c>();
+        List<Object> todosJson = (List<Object>) JSON.deserializeUntyped(request.requestBody.toString());
+        for (Object todo : todosJson) {
+            Map<String, Object> receivedTodoMap = (Map<String, Object>) todo;
+            subTodosFromRequest.add(mapSubTodoAndGetParentIds(receivedTodoMap, new List<Id>()));
+        }
+        System.debug(subTodosFromRequest);
 
-    private static Sub_ToDo__c mapSubTodo(Map<String, Object> receivedTodoMap, List<Id> externalParentTodoIds) {
+        List<Id> externalIds = new List<Id>();
+        for (Sub_ToDo__c subTodo : subTodosFromRequest) {
+            externalIds.add(subTodo.ExternalId__c);
+        }
+        List<Sub_ToDo__c> subTodosFromDB = [SELECT Id, ExternalId__c, ToDo__r.Id FROM Sub_ToDo__c WHERE ExternalId__c IN :externalIds];
+
+        for (Sub_ToDo__c todoFromRequest : subTodosFromRequest) {
+            for (Sub_ToDo__c todoFromDB : subTodosFromDB) {
+                if (todoFromRequest.ExternalId__c == todoFromDB.ExternalId__c) {
+                    todoFromRequest.Id = todoFromDB.Id;
+                    todoFromRequest.ToDo__r = todoFromDB.ToDo__r;
+                }
+            }
+        }
+        update subTodosFromRequest;
+    }
+
+    private static Sub_ToDo__c mapSubTodoAndGetParentIds(Map<String, Object> receivedTodoMap, List<Id> externalParentTodoIds) {
         externalParentTodoIds.add((Id) receivedTodoMap.get('relatedToDo'));
         return new Sub_ToDo__c(
                 Name = (String) receivedTodoMap.get('name'),
