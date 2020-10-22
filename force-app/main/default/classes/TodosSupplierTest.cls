@@ -51,7 +51,6 @@ public with sharing class TodosSupplierTest {
                 '"recordTypeName" : "Personal"}]');
         RestContext.request = request;
 
-
         TodosSupplier.updateTodo();
 
         ToDo__c updatedTodo = [SELECT Id,Name FROM ToDo__c WHERE Id = :todo.Id];
