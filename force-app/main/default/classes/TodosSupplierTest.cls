@@ -5,77 +5,70 @@
 @IsTest
 public with sharing class TodosSupplierTest {
     @IsTest
-    static void testCreateAccount() {
+    static void testCreateTodo() {
         RestRequest request = new RestRequest();
-        request.requestBody = Blob.valueOf('{"name": "Test record"}');
+        request.requestBody = Blob.valueOf('[ {"status" : "Planned", "startDate" : "2020-10-20",' +
+                '  "recordTypeName" : "Work", "name" : "Test Todo",' +
+                '  "id" : "a0009000001BKMzAAO", "description" : "Test Description",' +
+                '  "deadline" : "2020-10-21", "category" : "Work" },' +
+                '{"status" : "Planned", "startDate" : "2020-10-20",  "recordTypeName" : "Personal", ' +
+                '"name" : "Test Todo",  "id" : "a0009000001BKMzBBB", ' +
+                '"description" : "Test Description",  "deadline" : "2020-10-21", "category" : "Personal" }]}');
         RestContext.request = request;
 
-        Id thisAccountId;// = AccountManager.createAccount();
+        List<Id> newTodoIds = TodosSupplier.createTodo();
 
-        System.assert(thisAccountId != null);
-        Account thisAccount = [SELECT Id, Name FROM Account WHERE Id = :thisAccountId];
-        System.assert(thisAccount != null);
-        System.assertEquals(thisAccount.Name, 'Test record');
+        System.assert(newTodoIds != null);
+        List<ToDo__c> todos = [SELECT Name, Description__c FROM ToDo__c WHERE Id IN :newTodoIds];
+        System.assert(todos.size() == 2);
+        System.assertEquals(todos.get(0).Name, 'Test Todo');
+        System.assertEquals(todos.get(1).Description__c, 'Test Description');
     }
 
     @IsTest
-    static void testDeleteAccount() {
-        Id recordId = createTestRecord();
+    static void testDeleteTodo() {
+        List<Id> externalIds = new List<Id>();
+        externalIds.add(createTestRecord().ExternalId__c);
+        externalIds.add(createTestRecord().ExternalId__c);
         RestRequest request = new RestRequest();
-        request.requestURI =
-                'https:/cunning-fox-2asnae-dev-ed.lightning.force.com/services/apexrest/Accounts/' + recordId;
-        request.httpMethod = 'DELETE';
+        request.requestBody = Blob.valueOf(JSON.serialize(externalIds));
         RestContext.request = request;
 
-        //AccountManager.deleteAccount();
+        TodosSupplier.deleteTodo();
 
-        List<Account> accounts = [SELECT Id FROM Account WHERE Id = :recordId];
-        System.assert(accounts.size() == 0);
+        List<ToDo__c> todos = [SELECT Id FROM ToDo__c];
+        System.assert(todos.size() == 0);
     }
 
     @IsTest
-    static void testUpsertAccount() {
-        // 1. Insert new record
-        Id account1Id;// = AccountManager.upsertAccount(null, 'Test name', '067777777', 'www.test.com');
+    static void testUpdateTodo() {
+        ToDo__c todo = createTestRecord();
+        System.assert(todo != null);
+        System.assertEquals(todo.Name, 'Test record');
 
-        System.assert(account1Id != null);
-        Account account1 = [SELECT Id,Name, Phone, Website FROM Account WHERE Id = :account1Id];
-        System.assert(account1 != null);
-        System.assert(account1.Name == 'Test name' && account1.Phone == '067777777');
-
-        // 2. Update status of existing record to Working
-        Id account2Id;// = AccountManager.upsertAccount(account1Id, 'Test name new', '99999','www.testUpdate.com');
-        System.assertEquals(account1Id, account2Id);
-        Account account2 = [SELECT Id,Name, Phone, Website FROM Account WHERE Id = :account2Id];
-        System.assert(account2 != null);
-        System.assert(account2.Name == 'Test name new' && account2.Phone == '99999'
-                && account2.Website == 'www.testUpdate.com');
-    }
-    @IsTest
-    static void testUpdateAccountFields() {
-        Id recordId = createTestRecord();
         RestRequest request = new RestRequest();
-        request.requestURI =
-                'https:/cunning-fox-2asnae-dev-ed.lightning.force.com/services/apexrest/Accounts/' + recordId;
-        request.httpMethod = 'PATCH';
-        request.addHeader('Content-Type', 'application/json');
-        request.requestBody = Blob.valueOf('{"name": "Test PATCH"}');
+        request.requestBody = Blob.valueOf('[{"name": "Test Update", "id":"' + todo.ExternalId__c + '", ' +
+                '"recordTypeName" : "Personal"}]');
         RestContext.request = request;
 
-        Id thisAccountId; //= AccountManager.updateAccountFields();
 
-        System.assert(thisAccountId == recordId);
-        Account thisAccount = [SELECT Id,Name FROM Account WHERE Id = :thisAccountId];
-        System.assert(thisAccount != null);
-        System.assertEquals(thisAccount.Name, 'Test PATCH');
+        TodosSupplier.updateTodo();
+
+        ToDo__c updatedTodo = [SELECT Id,Name FROM ToDo__c WHERE Id = :todo.Id];
+        System.assert(updatedTodo != null);
+        System.assertEquals(updatedTodo.Name, 'Test Update');
     }
 
-    static Id createTestRecord() {
-        Account accountTest = new Account(
-                Name = 'Test record');
-        insert accountTest;
-        Contact contactTest = new Contact(LastName = 'TestContact', AccountId = accountTest.Id);
-        insert contactTest;
-        return accountTest.Id;
+    static ToDo__c createTestRecord() {
+        ToDo__c testTodo = new ToDo__c(
+                Name = 'Test record', Description__c = 'Test Desc',
+                Status__c = 'Planned', Category__c = 'Personal',
+                Start_Date__c = Date.parse('10/10/2020'),
+                Deadline__c = Date.parse('22/11/2020'),
+                ExternalId__c = 'a0009000001ycgnAAA');
+        insert testTodo;
+        Sub_ToDo__c subToDoTest = new Sub_ToDo__c(Name = 'Test Sub Todo', IsDone__c = false, ToDo__c = testTodo.Id);
+        insert subToDoTest;
+        return testTodo;
     }
 }

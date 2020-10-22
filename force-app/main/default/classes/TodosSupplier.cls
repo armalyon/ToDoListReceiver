@@ -10,9 +10,10 @@ global with sharing class TodosSupplier {
         RestRequest request = RestContext.request;
         List<ToDo__c> todosToInsert = new List<ToDo__c>();
         List<Object> todosJson = (List<Object>) JSON.deserializeUntyped(request.requestBody.toString());
+        List<RecordType> recordTypes = [SELECT Id, Name FROM RecordType];
         for (Object todo : todosJson) {
             Map<String, Object> receivedTodoMap = (Map<String, Object>) todo;
-            todosToInsert.add(mapTodo(receivedTodoMap));
+            todosToInsert.add(mapTodo(receivedTodoMap, recordTypes));
         }
         insert todosToInsert;
         List<Id> ids = new List<Id>();
@@ -23,31 +24,13 @@ global with sharing class TodosSupplier {
         return ids;
     }
 
-
-    private static ToDo__c mapTodo(Map<String, Object> receivedTodoMap) {
-        String recordTypeName = (String) receivedTodoMap.get('recordTypeName');
-        RecordType recordType = [SELECT Id FROM RecordType WHERE Name = :recordTypeName];
-        return new ToDo__c(
-                ExternalId__c = (String) receivedTodoMap.get('id'),
-                Name = (String) receivedTodoMap.get('name'),
-                Status__c = (String) receivedTodoMap.get('status'),
-                Start_Date__c = receivedTodoMap.get('startDate') != null ? Date.valueOf(receivedTodoMap.get('startDate') + ' 00:00:00') : null,
-                Description__c = (String) receivedTodoMap.get('description'),
-                Deadline__c = receivedTodoMap.get('deadline') != null ? Date.valueOf(receivedTodoMap.get('deadline') + ' 00:00:00') : null,
-                Category__c = (String) receivedTodoMap.get('category'),
-                RecordTypeId = recordType.Id
-        );
-
-    }
-
-
     @HttpDelete
     global static void deleteTodo() {
         RestRequest request = RestContext.request;
         RestResponse res = new RestResponse();
-        List<String> idToDelete = (List<String>) JSON.deserialize(request.requestBody.toString(), List<String>.class);
-        List<ToDo__c> deleteTodos = [SELECT Id FROM ToDo__c WHERE ExternalId__c IN :idToDelete];
         try {
+            List<String> idToDelete = (List<String>) JSON.deserialize(request.requestBody.toString(), List<String>.class);
+            List<ToDo__c> deleteTodos = [SELECT Id FROM ToDo__c WHERE ExternalId__c IN :idToDelete];
             delete deleteTodos;
             res.responseBody = Blob.valueOf('Request success');
             res.statusCode = 200;
@@ -64,14 +47,17 @@ global with sharing class TodosSupplier {
         RestRequest request = RestContext.request;
         List<ToDo__c> todosFromRequest = new List<ToDo__c>();
         List<Object> todosJson = (List<Object>) JSON.deserializeUntyped(request.requestBody.toString());
+        List<RecordType> recordTypes = [SELECT Id, Name FROM RecordType];
         for (Object todo : todosJson) {
             Map<String, Object> receivedTodoMap = (Map<String, Object>) todo;
-            todosFromRequest.add(mapTodo(receivedTodoMap));
+            todosFromRequest.add(mapTodo(receivedTodoMap, recordTypes));
         }
+
         List<String> externalIds = new List<String>();
         for (ToDo__c todo : todosFromRequest) {
             externalIds.add(todo.ExternalId__c);
         }
+
         List<ToDo__c> todosFromDB = [SELECT Id, ExternalId__c FROM ToDo__c WHERE ExternalId__c IN :externalIds];
         for (ToDo__c todoFromRequest : todosFromRequest) {
             for (ToDo__c todoFromDB : todosFromDB) {
@@ -81,5 +67,25 @@ global with sharing class TodosSupplier {
             }
         }
         update todosFromRequest;
+    }
+
+    private static ToDo__c mapTodo(Map<String, Object> receivedTodoMap, List<RecordType> recordTypes) {
+        String recordTypeNameReceived = (String) receivedTodoMap.get('recordTypeName');
+        RecordType recordType ;
+        for (RecordType rt : recordTypes) {
+            if (rt.Name == recordTypeNameReceived) {
+                recordType = rt;
+            }
+        }
+        return new ToDo__c(
+                ExternalId__c = (String) receivedTodoMap.get('id'),
+                Name = (String) receivedTodoMap.get('name'),
+                Status__c = (String) receivedTodoMap.get('status'),
+                Start_Date__c = receivedTodoMap.get('startDate') != null ? Date.valueOf(receivedTodoMap.get('startDate') + ' 00:00:00') : null,
+                Description__c = (String) receivedTodoMap.get('description'),
+                Deadline__c = receivedTodoMap.get('deadline') != null ? Date.valueOf(receivedTodoMap.get('deadline') + ' 00:00:00') : null,
+                Category__c = (String) receivedTodoMap.get('category'),
+                RecordTypeId = recordType.Id
+        );
     }
 }
