@@ -9,10 +9,12 @@ public with sharing class SubTodosSupplierTest {
         RestRequest request = new RestRequest();
         createTestRecord();
         ToDo__c parentTodo = [SELECT Id FROM ToDo__c LIMIT 1];
+        System.debug(parentTodo);
+
         request.requestBody = Blob.valueOf('[' +
-                '{"relatedToDo" : "' + parentTodo.Id + '",  "name" : "Test Subtodo", ' +
+                '{"relatedToDo" : "a0009000001ycgnAAA",  "name" : "Test Subtodo", ' +
                 ' "isDone" : false,  "id" : "a0109000002vfDiAAI",  "description" : "parent todo Test  "},' +
-                '{"relatedToDo" : "' + parentTodo.Id + '",  "name" : "Test Subtodo2", ' +
+                '{"relatedToDo" : "a0009000001ycgnAAA",  "name" : "Test Subtodo2", ' +
                 ' "isDone" : true,  "id" : "a0109000002vfDiAAI",  "description" : "Sub todo Test POST"} ]}');
         RestContext.request = request;
 

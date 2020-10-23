@@ -16,8 +16,9 @@ global with sharing class SubTodosSupplier {
             Map<String, Object> receivedTodoMap = (Map<String, Object>) todo;
             subTodosToInsert.add(mapSubTodoAndGetParentIds(receivedTodoMap, externalParentTodoIds));
         }
-
+        System.debug(externalParentTodoIds);
         List<ToDo__c> parentTodos = [SELECT Id, ExternalId__c FROM ToDo__c WHERE ExternalId__c IN :externalParentTodoIds];
+        System.debug(parentTodos);
         for (Sub_ToDo__c subToDo : subTodosToInsert) {
             for (ToDo__c parentTodo : parentTodos) {
                 if (subToDo.ToDo__c == parentTodo.ExternalId__c) {

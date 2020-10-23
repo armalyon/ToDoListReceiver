@@ -1,0 +1,53 @@
+import {LightningElement, wire} from 'lwc';
+
+import getToDoList from '@salesforce/apex/ToDoController.getToDoList'
+import {ShowToastEvent} from 'lightning/platformShowToastEvent';
+import {deleteRecord} from "lightning/uiRecordApi";
+import {refreshApex} from "@salesforce/apex";
+import {reduceErrors} from 'c/ldsUtils';
+
+export default class ToDosContainer extends LightningElement {
+  todos;
+  /** Wired Apex result so it can be refreshed programmatically */
+  wiredTodosResult;
+
+  @wire(getToDoList)
+  loadRecords(result) {
+    this.wiredTodosResult = result;
+    console.log('load records invoked');
+    if (result.data) {
+      this.todos = result.data;
+      console.log(this.todos);
+      this.error = undefined;
+    } else if (result.error) {
+      this.error = result.error;
+      this.todos = undefined;
+    }
+  }
+
+
+  handleDeleteTodo(event) {
+    const todoId = event.detail;
+    console.log('Log from delete handle: ' + todoId)
+    deleteRecord(todoId)
+    .then(() => {
+      this.dispatchEvent(
+          new ShowToastEvent({
+            title: 'Success',
+            message: 'Todo deleted',
+            variant: 'success'
+          })
+      );
+      return refreshApex(this.wiredTodosResult);
+    })
+    .catch((error) => {
+      this.dispatchEvent(
+          new ShowToastEvent({
+            title: 'Error deleting todo',
+            message: reduceErrors(error).join(', '),
+            variant: 'error'
+          })
+      );
+    });
+  }
+}

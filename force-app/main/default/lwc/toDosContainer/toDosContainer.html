@@ -1,0 +1,17 @@
+<template>
+
+  <lightning-card title="Todos" variant="Narrow" icon-name="standard:task">
+
+    <lightning-layout multiple-rows="true" pull-to-boundary="small">
+      <template for:each={todos} for:item="todo">
+        <lightning-layout-item size="3" class="slds-var-p-around_x-small" key={todo.id}>
+          <c-to-do-card
+              todo={todo}
+              ondeletetodo={handleDeleteTodo}>
+          </c-to-do-card>
+        </lightning-layout-item>
+      </template>
+    </lightning-layout>
+
+  </lightning-card>
+</template>
