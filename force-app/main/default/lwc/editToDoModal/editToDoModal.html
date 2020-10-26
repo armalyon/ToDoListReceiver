@@ -8,14 +8,19 @@
     <div class="slds-modal__container">
       <div class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
         <div class="slds-text-heading_small slds-text-align_center">
-          Yo-ho-ho!
-        </div>
 
+          <lightning-record-form
+              record-id={todo.Id}
+              object-api-name="ToDo__c"
+              onsuccess={handleCancel}
+              fields={fields}
+              mode={view}>
+          </lightning-record-form>
+
+        </div>
       </div>
 
-
       <footer class="slds-modal__footer">
-        <lightning-button label="Save" variant="brand" onclick={handleSave}></lightning-button>
         <lightning-button label="Cancel" variant="neutral"
                           onclick={handleCancel}></lightning-button>
       </footer>

@@ -8,8 +8,10 @@ import {reduceErrors} from 'c/ldsUtils';
 
 export default class ToDosContainer extends LightningElement {
   todos;
+  todo = {"Id" : null};
   /** Wired Apex result so it can be refreshed programmatically */
   wiredTodosResult;
+  isOpenCreateModal = false;
 
   @wire(getToDoList)
   loadRecords(result) {
@@ -24,7 +26,6 @@ export default class ToDosContainer extends LightningElement {
       this.todos = undefined;
     }
   }
-
 
   handleDeleteTodo(event) {
     const todoId = event.detail;
@@ -49,5 +50,19 @@ export default class ToDosContainer extends LightningElement {
           })
       );
     });
+  }
+  refreshList(){
+    return refreshApex(this.wiredTodosResult);
+  }
+
+
+  handleClickCreateTodo() {
+    console.log('Clicked to open modal create');
+    this.isOpenCreateModal = true;
+    console.log('isopen= ' + this.isOpenCreateModal);
+  }
+  closeCreateModal() {
+    this.isOpenCreateModal = false;
+    return this.refreshList();
   }
 }

@@ -19,6 +19,7 @@ export default class ToDoCard extends LightningElement {
 
   closeEditModal() {
     this.isOpenEditModal = false;
+    this.dispatchEvent(new CustomEvent('refreshlist'));
   }
 
 }
